@@ -37,4 +37,27 @@
     console.log('release', markerId);
     arSceneManager.release(markerId);
   });
+
+  var axisHelper = new THREE.AxisHelper(1);
+  axisHelper.material.linewidth = 5;
+  axisHelper.position.set(-2,0,-1);
+  scene.add(axisHelper);
+
+  function d2r(d) {
+    return d * Math.PI / 180;
+  };
+
+  var previous = new THREE.Vector3(0, 0, 0);
+  var calibration = new THREE.Vector3(0, 0, 0);
+  function calibrate(data) {
+    var vecGyro = data;
+    var vecMark = activeObj.parent.rotation.toVector3();
+    return vecGyro.sub(vecMark);
+  }
+  socket.on('orientation', function(data) {
+    previous.set(d2r(data[0]), d2r(data[1]), d2r(data[2]));
+    previous.add(calibration)
+    axisHelper.rotation.setFromVector3(previous);
+  });
+
 </script>

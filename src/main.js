@@ -38,13 +38,13 @@ document.body.appendChild( renderer.domElement );
 var onRenderFcts = [];
 
 // init scene and camera
-var scene = new THREE.Scene()
+var scene = new THREE.Scene();
 var camera	= new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.01, 1000);
 camera.position.z = 2;
 
 var SPHERE_SIZE = 20;
 
-var OVERLAY_MAT = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: false, transparent: true, opacity: 0.3 });
+var OVERLAY_MAT = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: false, transparent: true, opacity: 0.1 });
 var RED_MAT = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: true, transparent: true, opacity: 0.7 });
 var GREEN_MAT = new THREE.MeshBasicMaterial( { color: 0x00ff00, wireframe: true, transparent: true, opacity: 0.7 });
 var BLUE_MAT = new THREE.MeshBasicMaterial( { color: 0x0000ff, wireframe: true, transparent: true, opacity: 0.7 });
@@ -67,12 +67,9 @@ var arSceneManager = {
   },
 
   addDebug: function(markerId) {
-    var geometry = new THREE.PlaneGeometry(1,1,10,10);
-    var material = new THREE.MeshBasicMaterial({ wireframe: true });
-    var mesh = new THREE.Mesh(geometry, material);
-
-    this.add(markerId, mesh);
-    this.add(markerId, new THREE.AxisHelper());
+    var axisHelper = new THREE.AxisHelper(SPHERE_SIZE * 2);
+    axisHelper.material.linewidth = 15;
+    this.add(markerId, axisHelper);
   },
 
   // testing method
@@ -80,15 +77,17 @@ var arSceneManager = {
           var clone = PIG.clone();
           clone.applyMatrix(activeObj.matrixWorld);
           clone.traverse(function(cloneChild) {
-            if (cloneChild instanceof THREE.Mesh)
+            if (cloneChild instanceof THREE.Mesh) {
               cloneChild.sphere = new THREE.Sphere(clone.position, SPHERE_SIZE);
               cloneChild.targetable = true;
               cloneChild.material = BLUE_MAT.clone();
+            }
           });
           scene.add(clone);
   },
   select: function(markerId) {
-    console.log("SELECT");
+    if (!activeObj.parent.visible)
+      return;
     scene.traverseVisible(function(child) {
       if (child.targeted) {
         THREE.SceneUtils.attach(child.parent, scene, activeObj);
@@ -161,6 +160,7 @@ function sphere(id) {
 }
 
 sphere(265);
+arSceneManager.addDebug(265);
 
 function normalize(obj) {
   var box = new THREE.Box3();
@@ -181,7 +181,6 @@ function normalize(obj) {
     });
     normalize(obj);
     window.PIG= obj;
-    // arSceneManager.addDebug(265);
   });
 
 // pig();

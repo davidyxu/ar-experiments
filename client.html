@@ -1,3 +1,6 @@
+<meta name="viewport" content="user-scalable=no" />
+
+
 <style>
   html, body, #bg-marker {
     position: fixed;
@@ -45,8 +48,10 @@
     for (var i = 0; i < e.changedTouches.length; i++) {
       var touch = e.changedTouches[i];
       activeTouches[touch.identifier] = { target: touch.target.id, first: touch.pageY, last: touch.pageY };
-      if (activeTouches[touch.identifier].target === 'release')
+      if (touch.target.id === 'release')
         socket.emit('select', markerId);
+      if (touch.target.id === 'release' || touch.target.id === 'insert')
+        document.getElementById(touch.target.id).style.border = '5px solid blue';
 
       socket.emit('log', activeTouches[touch.identifier]);
     }
@@ -59,8 +64,10 @@
       var delta = history.last - touch.pageY;
       socket.emit('log', [delta, history.last, touch.pageY].join(" "));
 
-      if (history.target && history.target !== touch.target.id)
+      if (history.target && history.target !== touch.target.id) {
+        document.getElementById(touch.target.id).style.border = 'initial';
         history.target = null;
+      }
 
       if (delta !== 0) {
         history.last = touch.pageY;
@@ -78,6 +85,8 @@
       var totalDelta = history.first - touch.pageY;
 
       delete activeTouches[touch.identifier];
+
+      document.getElementById(touch.target.id).style.border = 'initial';
 
       if (history.target === 'release')
         socket.emit('release', markerId);
@@ -106,6 +115,9 @@
     document.body.addEventListener("touchend", handleEnd, false);
     document.body.addEventListener("touchcancel", handleCancel, false);
     document.body.addEventListener("touchmove", handleMove, false);
+    window.addEventListener('deviceorientation', function(e) {
+      socket.emit('orientation', [e.beta, -e.gamma, e.alpha - 180]);
+    });
   });
 
 </script>

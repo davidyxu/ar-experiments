@@ -20,6 +20,10 @@ io.on('connection', function (socket) {
     console.log('distance', data);
     io.emit('translateY', data);
   });
+  socket.on('orientation', function(data) {
+    console.log('orientation', data);
+    io.emit('orientation', data);
+  });
 });
 
 io.listen(5000);
