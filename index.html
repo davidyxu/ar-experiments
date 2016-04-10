@@ -16,3 +16,17 @@
 
 <body style='margin: 0px; overflow: hidden;'></body>
 <script src='./src/main.js'></script>
+
+<script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
+<script>
+  var socket = io('http://Davids-MBP:5000');
+
+  socket.on('translateY', function (data) {
+    activeObj.translateY(data);
+  });
+
+  socket.on('release', function(markerId) {
+    console.log('release', markerId);
+    arSceneManager.release(markerId);
+  });
+</script>

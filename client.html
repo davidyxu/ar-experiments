@@ -1,0 +1,99 @@
+<style>
+  html, body, #bg-marker {
+    position: fixed;
+    margin: 0;
+    width: 100%;
+    height:100%;
+  }
+  #bg-marker {
+    background-image:url('./assets/img/image-marker-265.png');
+    background-position: center top;
+    background-repeat:no-repeat;
+    z-index:-1;
+  }
+  #release {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    height: 200px;
+    background-color: red;
+  }
+</style>
+
+<body>
+  <div id="bg-marker"></div>
+  <div id="release"></div>
+</body>
+
+<script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
+<script>
+  var markerId = 265;
+  var activeTouches = {};
+  var socket = io('http://Davids-MBP:5000');
+
+  function handleStart(e) {
+    socket.emit('log', 'handleStart');
+
+    for (var i = 0; i < e.changedTouches.length; i++) {
+      var touch = e.changedTouches[i];
+      activeTouches[touch.identifier] = { target: touch.target.id, first: touch.pageY, last: touch.pageY };
+
+      socket.emit('log', activeTouches[touch.identifier]);
+    }
+  }
+
+  function handleMove(e) {
+    for (var i = 0; i < e.changedTouches.length; i++) {
+      var touch = e.changedTouches[i];
+      var history = activeTouches[touch.identifier];
+      var delta = history.last - touch.pageY;
+      socket.emit('log', [delta, history.last, touch.pageY].join(" "));
+
+      if (history.target && history.target !== touch.target.id)
+        history.target = null;
+
+      if (delta !== 0) {
+        history.last = touch.pageY;
+        socket.emit('distance', delta);
+      }
+    };
+  }
+
+  function handleEnd(e) {
+    socket.emit('log', 'handleEnd');
+
+    for (var i = 0; i < e.changedTouches.length; i++) {
+      var touch = e.changedTouches[i];
+      var history = activeTouches[touch.identifier];
+      var totalDelta = history.first - touch.pageY;
+
+      delete activeTouches[touch.identifier];
+
+      if (history.target === 'release')
+        socket.emit('release', markerId);
+
+      socket.emit('log', "TOTAL DELTA: " + totalDelta);
+    };
+  }
+
+  function handleCancel(e) {
+    socket.emit('log', 'handleCancel');
+
+    for (var i = 0; i < e.changedTouches.length; i++) {
+      var touch = e.changedTouches[i];
+      var cancelledDelta = activeTouches[touch].last - activeTouches[touch].first;
+      delete activeTouches[touch.identifier];
+
+      if (delta !== 0)
+        socket.emit('distance', cancelledDelta);
+    };
+  }
+
+  window.addEventListener('load', function() {
+    document.body.addEventListener("touchstart", handleStart, false);
+    document.body.addEventListener("touchend", handleEnd, false);
+    document.body.addEventListener("touchcancel", handleCancel, false);
+    document.body.addEventListener("touchmove", handleMove, false);
+  });
+
+</script>

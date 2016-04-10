@@ -18,14 +18,14 @@
 var detectMarkersStats = new Stats();
 detectMarkersStats.setMode( 1 );
 document.body.appendChild( detectMarkersStats.domElement );
-      detectMarkersStats.domElement.style.position = 'absolute'
+detectMarkersStats.domElement.style.position = 'absolute'
 detectMarkersStats.domElement.style.bottom = '0px'
 detectMarkersStats.domElement.style.right = '0px'
 
 var renderStats = new Stats();
 renderStats.setMode( 0 );
 document.body.appendChild( renderStats.domElement );
-      renderStats.domElement.style.position = 'absolute'
+renderStats.domElement.style.position = 'absolute'
 renderStats.domElement.style.bottom = '0px'
 renderStats.domElement.style.left = '0px'
 
@@ -42,9 +42,11 @@ var scene = new THREE.Scene()
 var camera	= new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.01, 1000);
 camera.position.z = 2;
 
-var light = new THREE.PointLight( 0xff0000, 1, 100 );
-light.position.set( 0, 0, 0 );
-scene.add( light );
+var SPHERE_SIZE = 20;
+
+var RED_MAT = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: true, transparent: true, opacity: 0.7 });
+var GREEN_MAT = new THREE.MeshBasicMaterial( { color: 0x00ff00, wireframe: true, transparent: true, opacity: 0.7 });
+var BLUE_MAT = new THREE.MeshBasicMaterial( { color: 0x0000ff, wireframe: true, transparent: true, opacity: 0.7 });
 
 var arSceneManager = {
   setupMarker: function(markerId) {
@@ -55,21 +57,14 @@ var arSceneManager = {
 
     scene.add(markerObject);
   },
+
   add: function(markerId, obj) {
     if (!scene.getObjectByName(markerId))
       this.setupMarker(markerId);
 
-    var box = new THREE.Box3();
-    box.setFromObject(obj);
-
-    var scale = 1.0 / box.size().length();
-    obj.scale.x = scale;
-    obj.scale.y = scale;
-    obj.scale.z = scale;
-    obj.translateY(2);
-
     scene.getObjectByName(markerId).add(obj);
   },
+
   addDebug: function(markerId) {
     var geometry = new THREE.PlaneGeometry(1,1,10,10);
     var material = new THREE.MeshBasicMaterial({ wireframe: true });
@@ -81,14 +76,31 @@ var arSceneManager = {
 
   // testing method
   release: function(markerId) {
-    scene.add(scene.getObjectByName(markerId).clone());
+    var obj = scene.getObjectByName(markerId);
+    if (obj && obj.visible) {
+      obj.traverse(function(child) {
+        if (child instanceof THREE.Mesh) {
+          var clone = new THREE.Mesh(child.geometry, BLUE_MAT.clone());
+          clone.position.setFromMatrixPosition(child.parent.matrixWorld);
+          clone.sphere = new THREE.Sphere(clone.position, SPHERE_SIZE);
+          clone.targettable = true;
+          scene.add(clone);
+        }
+
+      });
+    }
   },
+
   update: function(markers) {
+    // activeObj.geometry.computeBoundingSphere();
+    // var activeSphere = activeObj.geometry.boundingSphere;
+    // activeSphere.center = activeObj.position.clone().applyMatrix4(activeObj.matrixWorld);
+    // activeObj.worldToLocal(activeObj.position.clone());
+
     scene.traverseVisible(function(child) {
       if (child.marker)
-        child.visible = false;
+        child.visible = false
     });
-
     markers.forEach(function(marker) {
       var markerObject = scene.getObjectByName(marker.id);
       if (markerObject) {
@@ -96,26 +108,61 @@ var arSceneManager = {
         jsArucoMarker.markerToObject3D(marker, markerObject);
       }
     });
+
+    activeObj.sphere.center = activeObj.position.clone().setFromMatrixPosition(activeObj.matrixWorld);
+    // console.log(activeObj.sphere);
+    scene.traverseVisible(function(child) {
+      if (child.targettable) {
+        var sphere = child.sphere;
+        // geometry && child.geometry.boundingSphere;
+        if (activeObj.visible && sphere && sphere.intersectsSphere(activeObj.sphere)) {
+          console.log("INTERSECTION");
+          child.material.color.setHex(0x00ff00);
+        } else {
+          child.material.color.setHex(0x0000ff);
+        }
+      }
+    });
   }
 };
 
-var loader = new THREE.OBJLoader();
-var material = new THREE.MeshBasicMaterial({
-  color: 0x7777ff,
-  wireframe: true,
-  wireframeLinecap: "square",
-  wireframeLinejoin: "miter"
-});
 
-loader.load("./assets/obj/pig.obj", function(obj) {
-  obj.traverse(function(child) {
-    if (child instanceof THREE.Mesh)
-      child.material = material;
+
+function sphere(id) {
+  var geo  = new THREE.SphereGeometry( SPHERE_SIZE, 32, 16 );
+  //, transparent: true, opacity: 0.8 } );
+  var mesh = new THREE.Mesh( geo, RED_MAT);
+  mesh.sphere = new THREE.Sphere(mesh.position.clone(), SPHERE_SIZE);
+  window.activeObj = mesh;
+  arSceneManager.add(id, mesh);
+}
+
+sphere(265);
+
+function normalize(obj) {
+  var box = new THREE.Box3();
+  box.setFromObject(obj);
+
+  var scale = 1.0 / box.size().length();
+  obj.scale.x = scale;
+  obj.scale.y = scale;
+  obj.scale.z = scale;
+}
+
+  var loader = new THREE.OBJLoader();
+  loader.load("./assets/obj/pig.obj", function(obj) {
+    var box = new THREE.Box3();
+    box.setFromObject(obj);
+
+    var scale = 1.0 / box.size().length();
+    obj.scale.x = scale;
+    obj.scale.y = scale;
+    obj.scale.z = scale;
+    window.PIG= obj;
+    // arSceneManager.addDebug(265);
   });
-  arSceneManager.add(265, obj);
-  arSceneManager.addDebug(265);
-});
 
+// pig();
 //////////////////////////////////////////////////////////////////////////////////
 //		render the whole thing on the page
 //////////////////////////////////////////////////////////////////////////////////
