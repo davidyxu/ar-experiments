@@ -44,6 +44,7 @@ camera.position.z = 2;
 
 var SPHERE_SIZE = 20;
 
+var OVERLAY_MAT = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: false, transparent: true, opacity: 0.3 });
 var RED_MAT = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: true, transparent: true, opacity: 0.7 });
 var GREEN_MAT = new THREE.MeshBasicMaterial( { color: 0x00ff00, wireframe: true, transparent: true, opacity: 0.7 });
 var BLUE_MAT = new THREE.MeshBasicMaterial( { color: 0x0000ff, wireframe: true, transparent: true, opacity: 0.7 });
@@ -75,22 +76,38 @@ var arSceneManager = {
   },
 
   // testing method
-  release: function(markerId) {
-    var obj = scene.getObjectByName(markerId);
-    if (obj && obj.visible) {
-      obj.traverse(function(child) {
-        if (child instanceof THREE.Mesh) {
-          var clone = new THREE.Mesh(child.geometry, BLUE_MAT.clone());
-          clone.position.setFromMatrixPosition(child.parent.matrixWorld);
-          clone.sphere = new THREE.Sphere(clone.position, SPHERE_SIZE);
-          clone.targettable = true;
+  insert: function(markerId) {
+          var clone = PIG.clone();
+          clone.applyMatrix(activeObj.matrixWorld);
+          clone.traverse(function(cloneChild) {
+            if (cloneChild instanceof THREE.Mesh)
+              cloneChild.sphere = new THREE.Sphere(clone.position, SPHERE_SIZE);
+              cloneChild.targetable = true;
+              cloneChild.material = BLUE_MAT.clone();
+          });
           scene.add(clone);
-        }
-
-      });
-    }
   },
-
+  select: function(markerId) {
+    console.log("SELECT");
+    scene.traverseVisible(function(child) {
+      if (child.targeted) {
+        THREE.SceneUtils.attach(child.parent, scene, activeObj);
+        child.targetable = false;
+        child.targeted = false;
+        child.selected = true;
+      }
+    });
+  },
+  release: function(markerId) {
+    scene.traverseVisible(function(child) {
+      if (child.selected) {
+        THREE.SceneUtils.detach(child.parent, activeObj, scene);
+        child.targetable = true;
+        child.targeted = false;
+        child.selected = false;
+      }
+    });
+  },
   update: function(markers) {
     // activeObj.geometry.computeBoundingSphere();
     // var activeSphere = activeObj.geometry.boundingSphere;
@@ -98,8 +115,11 @@ var arSceneManager = {
     // activeObj.worldToLocal(activeObj.position.clone());
 
     scene.traverseVisible(function(child) {
-      if (child.marker)
-        child.visible = false
+      if (child.marker) {
+        child.reset = child.reset || 5;
+        if (--child.reset === 0)
+          child.visible = false
+      }
     });
     markers.forEach(function(marker) {
       var markerObject = scene.getObjectByName(marker.id);
@@ -112,14 +132,16 @@ var arSceneManager = {
     activeObj.sphere.center = activeObj.position.clone().setFromMatrixPosition(activeObj.matrixWorld);
     // console.log(activeObj.sphere);
     scene.traverseVisible(function(child) {
-      if (child.targettable) {
+      if (child.targetable) {
         var sphere = child.sphere;
         // geometry && child.geometry.boundingSphere;
-        if (activeObj.visible && sphere && sphere.intersectsSphere(activeObj.sphere)) {
+        if (activeObj.parent.visible && sphere && sphere.intersectsSphere(activeObj.sphere)) {
           console.log("INTERSECTION");
           child.material.color.setHex(0x00ff00);
+          child.targeted = true;
         } else {
           child.material.color.setHex(0x0000ff);
+          child.targeted = false;
         }
       }
     });
@@ -129,10 +151,11 @@ var arSceneManager = {
 
 
 function sphere(id) {
-  var geo  = new THREE.SphereGeometry( SPHERE_SIZE, 32, 16 );
+  var geo  = new THREE.SphereGeometry( SPHERE_SIZE*2, 32, 16 );
   //, transparent: true, opacity: 0.8 } );
-  var mesh = new THREE.Mesh( geo, RED_MAT);
-  mesh.sphere = new THREE.Sphere(mesh.position.clone(), SPHERE_SIZE);
+  // var mesh = new THREE.Mesh( geo, [RED_MAT, OVERLAY_MAT]);
+  var mesh = new THREE.SceneUtils.createMultiMaterialObject(geo, [RED_MAT, OVERLAY_MAT]);
+  mesh.sphere = new THREE.Sphere(mesh.position.clone(), SPHERE_SIZE*2);
   window.activeObj = mesh;
   arSceneManager.add(id, mesh);
 }
@@ -151,13 +174,12 @@ function normalize(obj) {
 
   var loader = new THREE.OBJLoader();
   loader.load("./assets/obj/pig.obj", function(obj) {
-    var box = new THREE.Box3();
-    box.setFromObject(obj);
-
-    var scale = 1.0 / box.size().length();
-    obj.scale.x = scale;
-    obj.scale.y = scale;
-    obj.scale.z = scale;
+    obj.traverse(function(child) {
+      if (child instanceof THREE.Mesh) {
+        child.geometry.scale(5, 5, 5);
+      }
+    });
+    normalize(obj);
     window.PIG= obj;
     // arSceneManager.addDebug(265);
   });

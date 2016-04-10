@@ -11,18 +11,26 @@
     background-repeat:no-repeat;
     z-index:-1;
   }
-  #release {
+  .control {
     position: fixed;
     bottom: 0;
-    width: 100%;
+    width: 50%;
     height: 200px;
+  }
+  #release {
+    right: 0;
     background-color: red;
+  }
+  #insert {
+    left: 0;
+    background-color: green;
   }
 </style>
 
 <body>
   <div id="bg-marker"></div>
-  <div id="release"></div>
+  <div class="control" id="insert"></div>
+  <div class="control" id="release"></div>
 </body>
 
 <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
@@ -37,6 +45,8 @@
     for (var i = 0; i < e.changedTouches.length; i++) {
       var touch = e.changedTouches[i];
       activeTouches[touch.identifier] = { target: touch.target.id, first: touch.pageY, last: touch.pageY };
+      if (activeTouches[touch.identifier].target === 'release')
+        socket.emit('select', markerId);
 
       socket.emit('log', activeTouches[touch.identifier]);
     }
@@ -71,6 +81,8 @@
 
       if (history.target === 'release')
         socket.emit('release', markerId);
+      if (history.target === 'insert')
+        socket.emit('insert', markerId);
 
       socket.emit('log', "TOTAL DELTA: " + totalDelta);
     };

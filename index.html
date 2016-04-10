@@ -25,6 +25,14 @@
     activeObj.translateY(data);
   });
 
+  socket.on('select', function(markerId) {
+    arSceneManager.select(markerId);
+  });
+
+  socket.on('insert', function(markerId) {
+    arSceneManager.insert(markerId);
+  });
+
   socket.on('release', function(markerId) {
     console.log('release', markerId);
     arSceneManager.release(markerId);
